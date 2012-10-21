@@ -6,45 +6,81 @@ import java.io.InputStream
 import scala.io.Source
 import java.io.File
 
-object IMCrawler {
+object Crawler {
 
 	def main(args: Array[String]): Unit = {
+		val OS = System.getProperty("os.name")
+		val OSVERSION = System.getProperty("os.version")
 
-		if (args.length < 3) {
-			println("Crawler needs ImageMagick to run")
-			println("Usage:")
-			println("\tscala crawler.IMCrawler [pathToImageMagick] [pathToSignatureDirectory] [pathToCrawl]")
+		println("Holmes Crawler version 1.0")
+		println(OS + " " + OSVERSION)
+
+		val rt = Runtime.getRuntime()
+
+		// Try to find ImageMagick
+		val pb = new ProcessBuilder("which", "convert");
+		val imCheck = pb.start();
+		val pathIM = if (System.getProperty("PATH_IM") == null) {
+			convertStreamToString(imCheck.getInputStream()) match {
+				case Some(a) => if (a.endsWith(File.separator)) a else a + File.separator
+				case None => {
+					printIMNotFound
+					exit(2)
+					""
+				}
+			}
+			imCheck.waitFor()
+		} else if (System.getProperty("PATH_IM").endsWith(File.separator)) System.getProperty("PATH_IM") else System.getProperty("PATH_IM") + File.separator
+
+		// Check if "convert" is "ImageMagick convert" or some other app
+		// If yes, check version
+		val pb2 = new ProcessBuilder(pathIM + "convert", "--version");
+		val imCheck2 = pb2.start();
+		val IMCOPYRIGHT = convertStreamToString(imCheck2.getInputStream(), "    ") match {
+			case Some(a) => a
+			case None => {
+				println("""Installed "convert" application is not part of the ImageMagick suite.""")
+				printIMNotFound
+				exit(2)
+				""
+			}
+		}
+		imCheck2.waitFor()
+
+		if (IMCOPYRIGHT.indexOf("ImageMagick") < 0) {
+			println("""Installed "convert" application is not part of the ImageMagick suite.""")
+			printIMNotFound
+			exit(2)
+		}
+
+		println("With help from\n" + IMCOPYRIGHT)
+
+		if (args.length < 2) {
+			println("Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]")
+			println("Bye!")
 		} else {
-			val OS = System.getProperty("os.name");
-
-			println("Holmes Crawler version 1.0");
-			println(OS);
 
 			try {
-				val rt = Runtime.getRuntime();
-				val pathIM = if (args(0).endsWith(File.separator)) args(0) else args(0) + File.separator
-				val env: Array[String] = Array("PATH=" + System.getenv("PATH") + File.pathSeparator + pathIM)
-
 				val cmd1 = pathIM + "convert -quiet /Users/hari/Downloads/svg_examples/penguin.svg -resize 256x256! -colorspace YUV -separate -append -define png:color-type=2  PNG:-"
 				val cmd2 = pathIM + "stream -map i -storage-type char - -"
 
-				val pr1 = rt.exec(cmd1, env)
+				val pr1 = rt.exec(cmd1)
 
 				val timer = System.nanoTime()
 
 				val is = pr1.getInputStream()
 				val bytes = Stream.continually(is.read).takeWhile(-1 !=).map(_.toByte).toArray
 
-				val exitVal1 = pr1.waitFor();
+				val exitVal1 = pr1.waitFor()
 				System.out.println("Exited with error code " + exitVal1);
 
 				if (exitVal1 == 0) {
-					val pr2 = rt.exec(cmd2, env)
+					val pr2 = rt.exec(cmd2)
 					val os2 = pr2.getOutputStream()
 					val is2 = pr2.getInputStream()
-					os2.write(bytes);
-					os2.flush();
-					os2.close();
+					os2.write(bytes)
+					os2.flush()
+					os2.close()
 					val ints = Stream.continually(is2.read).takeWhile(-1 !=).map(_.toInt).toList
 					println(ints.length)
 
@@ -60,15 +96,30 @@ object IMCrawler {
 				case e: Exception => e.printStackTrace()
 			}
 		}
+	}
 
-		def convertStreamToString(is: InputStream): String = try {
-			val src = Source.fromInputStream(is).getLines
-			if (src.length > 0) src.reduceLeft(_ + "\n" + _) else ""
-		} catch {
-			case e: Exception => {
-				e.printStackTrace()
-				e.toString()
-			}
+	def printIMNotFound = {
+		println("""Crawler needs ImageMagick to run. Install ImageMagick (http://www.imagemagick.org)""")
+		println("Then try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]")
+	}
+
+	def convertStreamToString(is: InputStream): Option[String] = try {
+		val src = Source.fromInputStream(is).getLines
+		if (src.isEmpty) None else Some(src.reduceLeft(_ + "\n" + _))
+	} catch {
+		case e: Exception => {
+			e.printStackTrace()
+			None
+		}
+	}
+
+	def convertStreamToString(is: InputStream, prefix: String): Option[String] = try {
+		val src = Source.fromInputStream(is).getLines
+		if (src.isEmpty) None else Some(prefix + src.reduceLeft(_ + "\n" + prefix + _))
+	} catch {
+		case e: Exception => {
+			e.printStackTrace()
+			None
 		}
 	}
 }
