@@ -8,29 +8,62 @@ import java.io.File
 
 object Crawler {
 
+	val MAC = 1
+	val WIN = 2
+	val NIX = 3
+	val NUL = -1
+
 	def main(args: Array[String]): Unit = {
-		val OS = System.getProperty("os.name")
+		val OSNAME = System.getProperty("os.name")
 		val OSVERSION = System.getProperty("os.version")
 
-		println("Holmes Crawler version 1.0")
-		println(OS + " " + OSVERSION)
+		// TODO check os version as well
+		// Mac > 10.5? - test
+		// Win > XP? - test
+		val macPattern = """(.*\s*OS X\s*)""".r
+		val winPattern = """(.*\s+Windows\s*)""".r // ? test
+		// val nixPattern = 
+		val OS = OSNAME match {
+			case macPattern(c) => MAC
+			case winPattern(c) => WIN
+			case c => NUL
+		}
 
-		val rt = Runtime.getRuntime()
+		println("Holmes Crawler version 1.0")
+		println(OSNAME + " " + OSVERSION)
+
+		if (OS == NUL) {
+			println("Unsupported OS")
+			println("Bye!")
+		}
 
 		// Try to find ImageMagick
 		val pb = new ProcessBuilder("which", "convert");
 		val imCheck = pb.start();
+		val imCheckOut = convertStreamToString(imCheck.getInputStream())
+		imCheck.waitFor()
+		
 		val pathIM = if (System.getProperty("PATH_IM") == null) {
-			convertStreamToString(imCheck.getInputStream()) match {
-				case Some(a) => if (a.endsWith(File.separator)) a else a + File.separator
+			val matchstr = File.separator + "convert"
+			val whichstr = ("""(.*)(""" + matchstr + ")").r;
+			imCheckOut match {
+				case Some(a) => a match {
+					case whichstr(a, matchstr) => a + File.separator
+					case _ => {
+						printIMNotFound
+						sys.exit(2)
+						""
+					}
+				}
 				case None => {
 					printIMNotFound
-					exit(2)
+					sys.exit(2)
 					""
 				}
 			}
-			imCheck.waitFor()
 		} else if (System.getProperty("PATH_IM").endsWith(File.separator)) System.getProperty("PATH_IM") else System.getProperty("PATH_IM") + File.separator
+
+		//		println("pathIM=" + pathIM)
 
 		// Check if "convert" is "ImageMagick convert" or some other app
 		// If yes, check version
@@ -41,7 +74,8 @@ object Crawler {
 			case None => {
 				println("""Installed "convert" application is not part of the ImageMagick suite.""")
 				printIMNotFound
-				exit(2)
+				println("Bye!")
+				sys.exit(2)
 				""
 			}
 		}
@@ -50,12 +84,16 @@ object Crawler {
 		if (IMCOPYRIGHT.indexOf("ImageMagick") < 0) {
 			println("""Installed "convert" application is not part of the ImageMagick suite.""")
 			printIMNotFound
-			exit(2)
+			println("Bye!")
+			sys.exit(2)
+			// sys.exit should be safe till this point because 
+			// we havn't started any threads or opened any streams yet.
 		}
 
 		println("With help from\n" + IMCOPYRIGHT)
 
 		if (args.length < 2) {
+			// Not enough Program Arguments
 			println("Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]")
 			println("Bye!")
 		} else {
@@ -64,6 +102,8 @@ object Crawler {
 				val cmd1 = pathIM + "convert -quiet /Users/hari/Downloads/svg_examples/penguin.svg -resize 256x256! -colorspace YUV -separate -append -define png:color-type=2  PNG:-"
 				val cmd2 = pathIM + "stream -map i -storage-type char - -"
 
+				// FIXME USe ProcessBuilder
+				val rt = Runtime.getRuntime()
 				val pr1 = rt.exec(cmd1)
 
 				val timer = System.nanoTime()
