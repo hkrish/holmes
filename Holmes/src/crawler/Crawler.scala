@@ -16,16 +16,17 @@ object Crawler {
 	//	var COLPRE = ""
 	//	var COLSUF = ""
 	var CONSOLE = 0
-
+	
 	def main(args: Array[String]): Unit = {
 		val OSNAME = System.getProperty("os.name")
 		val OSVERSION = System.getProperty("os.version")
 
-		//		println("\033[0;36mbold red text\033[0m\n")
+		println("Holmes Crawler version 1.0")
+		println(OSNAME + " " + OSVERSION)
 
 		// TODO check os version as well
-		// Mac > 10.5? - test
-		// Win > XP? - test
+		// Mac < 10.5? - test
+		// Win <= XP? - test
 		val macPattern = """(.*\s*OS X\s*)""".r
 		val winPattern = """(.*\s+Windows\s*)""".r // ? test
 		// val nixPattern = 
@@ -33,6 +34,11 @@ object Crawler {
 			case macPattern(c) => MAC
 			case winPattern(c) => WIN
 			case c => NUL
+		}
+
+		if (OS == NUL) {
+			println("Unsupported OS")
+			println("Bye!")
 		}
 
 		// Find ConsoleType
@@ -51,18 +57,9 @@ object Crawler {
 				}
 			}
 		}
-
-		println("Holmes Crawler version 1.0")
-		println(OSNAME + " " + OSVERSION)
-
-		if (OS == NUL) {
-			println("Unsupported OS")
-			println("Bye!")
-		}
-
+		
 		// Try to find ImageMagick
-		val pb = new ProcessBuilder("which", "convert");
-		val imCheck = pb.start();
+		val imCheck = new ProcessBuilder("which", "convert").start();
 		val imCheckOut = convertStreamToString(imCheck.getInputStream())
 		imCheck.waitFor()
 
@@ -90,8 +87,7 @@ object Crawler {
 
 		// Check if "convert" is "ImageMagick convert" or some other app
 		// If yes, check version
-		val pb2 = new ProcessBuilder(pathIM + "convert", "--version");
-		val imCheck2 = pb2.start();
+		val imCheck2 = new ProcessBuilder(pathIM + "convert", "--version").start();
 		val IMCOPYRIGHT = convertStreamToString(imCheck2.getInputStream(), "    ") match {
 			case Some(a) => a
 			case None => {
@@ -120,12 +116,16 @@ object Crawler {
 			println(clr(0, 31) + "Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]" + clr)
 			println("Bye!")
 		} else {
+			// TODO check for directories
 
+			// Ok now lets do our stuff
 			try {
+				// FIXME 'stream' returns a bunch of '0's in Windows 7! for some reason. Use bufferedImage for reliability!
+				// this is so far tested, successfully, only on mac.
 				val cmd1 = pathIM + "convert -quiet /Users/hari/Downloads/svg_examples/penguin.svg -resize 256x256! -colorspace YUV -separate -append -define png:color-type=2  PNG:-"
 				val cmd2 = pathIM + "stream -map i -storage-type char - -"
 
-				// FIXME USe ProcessBuilder
+				// FIXME Use ProcessBuilder
 				val rt = Runtime.getRuntime()
 				val pr1 = rt.exec(cmd1)
 
@@ -166,14 +166,14 @@ object Crawler {
 		println("Then try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]" + clr)
 	}
 
-	// ANSI colored output on supported terminals
+	// ANSI coloured output on supported terminals
 	def clr(a: Int, b: Int) = {
-		// "\033[0;36m"
+		// "\033[0;36m" for coloured text. 36-cyan and so on
 		if (CONSOLE > 0) "\033[" + a.toString + ";" + b.toString + "m" else ""
 	}
 
 	def clr = {
-		// "\033[0m"
+		// "\033[0m" for normal colours
 		if (CONSOLE > 0) "\033[0m" else ""
 	}
 
