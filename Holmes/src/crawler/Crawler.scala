@@ -13,9 +13,15 @@ object Crawler {
 	val NIX = 3
 	val NUL = -1
 
+	//	var COLPRE = ""
+	//	var COLSUF = ""
+	var CONSOLE = 0
+
 	def main(args: Array[String]): Unit = {
 		val OSNAME = System.getProperty("os.name")
 		val OSVERSION = System.getProperty("os.version")
+
+		//		println("\033[0;36mbold red text\033[0m\n")
 
 		// TODO check os version as well
 		// Mac > 10.5? - test
@@ -27,6 +33,23 @@ object Crawler {
 			case macPattern(c) => MAC
 			case winPattern(c) => WIN
 			case c => NUL
+		}
+
+		// Find ConsoleType
+		if (OS == MAC || OS == NIX) {
+			// TODO Thorough support for coloured terminal types possible
+			// priority-least
+			val termprog = "(iTerm.*)|(Apple_Terminal)".r
+			CONSOLE = System.getenv("TERM_PROGRAM") match {
+				case termprog(a, b) => 1
+				case _ => {
+					val termtype = "(xterm)(-color|-256color){0,1}".r
+					System.getenv("TERM") match {
+						case termtype(a, b) => 1
+						case _ => 0
+					}
+				}
+			}
 		}
 
 		println("Holmes Crawler version 1.0")
@@ -42,7 +65,7 @@ object Crawler {
 		val imCheck = pb.start();
 		val imCheckOut = convertStreamToString(imCheck.getInputStream())
 		imCheck.waitFor()
-		
+
 		val pathIM = if (System.getProperty("PATH_IM") == null) {
 			val matchstr = File.separator + "convert"
 			val whichstr = ("""(.*)(""" + matchstr + ")").r;
@@ -94,7 +117,7 @@ object Crawler {
 
 		if (args.length < 2) {
 			// Not enough Program Arguments
-			println("Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]")
+			println(clr(0, 31) + "Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]" + clr)
 			println("Bye!")
 		} else {
 
@@ -139,8 +162,19 @@ object Crawler {
 	}
 
 	def printIMNotFound = {
-		println("""Crawler needs ImageMagick to run. Install ImageMagick (http://www.imagemagick.org)""")
-		println("Then try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]")
+		println(clr(0, 31) + """Crawler needs ImageMagick to run. Install ImageMagick (http://www.imagemagick.org)""")
+		println("Then try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]" + clr)
+	}
+
+	// ANSI colored output on supported terminals
+	def clr(a: Int, b: Int) = {
+		// "\033[0;36m"
+		if (CONSOLE > 0) "\033[" + a.toString + ";" + b.toString + "m" else ""
+	}
+
+	def clr = {
+		// "\033[0m"
+		if (CONSOLE > 0) "\033[0m" else ""
 	}
 
 	def convertStreamToString(is: InputStream): Option[String] = try {
