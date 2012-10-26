@@ -5,6 +5,11 @@ import java.io.InputStreamReader
 import java.io.InputStream
 import scala.io.Source
 import java.io.File
+import org.im4java.process
+import org.im4java.process._
+import org.im4java.process.ProcessStarter
+import org.im4java.core
+import org.im4java.core._
 
 object Crawler {
 
@@ -83,8 +88,12 @@ object Crawler {
 			}
 		} else if (System.getProperty("PATH_IM").endsWith(File.separator)) System.getProperty("PATH_IM") else System.getProperty("PATH_IM") + File.separator
 
-		//		println("pathIM=" + pathIM)
+    /**
+     * Setup IM4Java
+     */
+    ProcessStarter.setGlobalSearchPath(myPath);
 
+    // TODO fix this to use im4java
 		// Check if "convert" is "ImageMagick convert" or some other app
 		// If yes, check version
 		val imCheck2 = new ProcessBuilder(pathIM + "convert", "--version").start();
