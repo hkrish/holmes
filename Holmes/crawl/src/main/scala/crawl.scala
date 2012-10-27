@@ -7,6 +7,7 @@ import java.io.InputStreamReader
 import java.io.InputStream
 import scala.io.Source
 import java.io.File
+import java.io.FileFilter
 import org.im4java.process
 import org.im4java.process._
 import org.im4java.process.ProcessStarter
@@ -20,9 +21,9 @@ object crawl{
 	val NIX = 3
 	val NUL = -1
 
-	//	var COLPRE = ""
-	//	var COLSUF = ""
 	var CONSOLE = 0
+  
+  val crawlerFileFilter = new CrawlerFileFilter
 	
 	def main(args: Array[String]): Unit = {
 		val OSNAME = System.getProperty("os.name")
@@ -98,10 +99,10 @@ object crawl{
 		// Check if "convert" is "ImageMagick convert" or some other app
 		// If yes, check version
 		val imCheck2 = new ProcessBuilder(pathIM + "convert", "--version").start();
-		val IMCOPYRIGHT = convertStreamToString(imCheck2.getInputStream(), "    ") match {
+		val IMCOPYRIGHT = convertStreamToString(imCheck2.getInputStream()) match {
 			case Some(a) => a
 			case None => {
-				println("""Installed "convert" application is not part of the ImageMagick suite.""")
+				printError("""Installed "convert" application is not part of the ImageMagick suite.""")
 				printIMNotFound
 				println("Bye!")
 				sys.exit(2)
@@ -110,8 +111,9 @@ object crawl{
 		}
 		imCheck2.waitFor()
 
+  // TODO use scala's regex pattern matching on case classes to do this job, above...
 		if (IMCOPYRIGHT.indexOf("ImageMagick") < 0) {
-			println("""Installed "convert" application is not part of the ImageMagick suite.""")
+			printError("""Installed "convert" application is not part of the ImageMagick suite.""")
 			printIMNotFound
 			println("Bye!")
 			sys.exit(2)
@@ -131,7 +133,7 @@ object crawl{
 
 			// Ok now lets do our stuff
 			try {
-				// FIXME 'stream' returns a bunch of '0's in Windows 7! for some reason. Use bufferedImage for reliability!
+				// FIXME 'stream' returns a bunch of '0's in Windows 7! Use bufferedImage for reliability!
 				// this is so far tested, successfully, only on mac.
         
         val cmd = new ConvertCmd();
@@ -159,9 +161,6 @@ object crawl{
            if (f.isDirectory()) walkDir(f);
           }
         }
-
-        // TODO implement piping in to bufferedImage
-
 			} catch {
 				case e: Exception => e.printStackTrace()
 			}
@@ -205,7 +204,7 @@ object crawl{
 
 class IMExecActor(cmd: ConvertCmd, op: IMOperation) extends Actor {
   val targetDir = "/Users/hari/Documents/Work/signatures/"
-
+  // TODO implement piping in to bufferedImage
   def act = {
     react {
       case f: File => try {
@@ -215,76 +214,27 @@ class IMExecActor(cmd: ConvertCmd, op: IMOperation) extends Actor {
       }
     }
   }
-
 }
 
+class CrawlerFileFilter extends FileFilter {
+   /**
+   * Suported file formats - by file extension
+   * This is only a subset of fileformats Image magick supports
+   */
+  val fileTypes:Array[String] = Array(".ai", ".arw", ".bgr", ".bgra", ".bmp", ".bmp2", ".bmp3",
+                                      ".cr2", ".crw", ".dcm", ".dcr", ".dcx", ".dng", ".dot",
+                                      ".epdf", ".epi", ".eps", ".eps2", ".eps3", ".epsf", ".ept",
+                                      ".efr", ".gif", ".gif87", ".icb", ".ico", ".icon", ".jng",
+                                      ".jpeg", ".jpg", ".nef", ".nrw", ".orf", ".pcx", ".pdf",
+                                      ".pix", ".png", ".png24", ".png32", ".psd", ".psb", ".sgi",
+                                      ".sr2", ".srf", ".svg", ".svgz", ".tga", ".tiff", ".tiff64", ".tif",
+                                      ".xcf")
 
+  // Implementation is *imparative
+  override def accept(f:File):Boolean = {
+    val n = f.getName().toLowerCase();
+    for(ff <- fileTypes) if(n.endsWith(ff)) return true;
+    return false;
+  }
+}
 
-//package crawler
-//
-//import java.io.BufferedReader
-//import java.io.InputStreamReader
-//import java.io.InputStream
-//import scala.io.Source
-//import java.io.File
-//
-//object IMCrawler {
-//
-//	def main(args: Array[String]): Unit = {
-//		if (args.length < 1) {
-//			println("IMCrawler needs ImageMagick to run");
-//			println("Usage:");
-//			println("\tscala crawler.IMCrawler [pathToImageMagick]");
-//		} else
-//			try {
-//				val rt = Runtime.getRuntime();
-//				val pathIM = if (args(0).endsWith(File.separator)) args(0) else args(0) + File.separator
-//				val env: Array[String] = Array("PATH=" + System.getenv("PATH") + File.pathSeparator + pathIM)
-//
-//				val tmpf = File.createTempFile("tempf", ".tmp")
-//				tmpf.deleteOnExit();
-//
-//				val cmd1 = pathIM + "convert -quiet /Users/hari/Downloads/svg_examples/penguin.svg -resize 256x256! -colorspace YUV -separate -append -define png:color-type=2  PNG:" + tmpf.getAbsolutePath();
-//				val cmd2 = pathIM + "stream -map i -storage-type char " + tmpf.getAbsolutePath() + " -";
-//
-//				val timer = System.nanoTime();
-//				
-//				val pr1 = rt.exec(cmd1, env);
-//				println(convertStreamToString(pr1.getInputStream()))
-//				println(convertStreamToString(pr1.getErrorStream()))
-//				val exitVal1 = pr1.waitFor();
-//				System.out.println("Exited with error code " + exitVal1);
-//
-//				if (exitVal1 == 0) {
-//					val pr2 = rt.exec(cmd2, env);
-//					val os2 = pr2.getOutputStream();
-//
-//					val is2 = pr2.getInputStream();
-//					val bytes = Stream.continually(is2.read).takeWhile(-1 !=).map(_.toByte).toArray
-//					println(bytes.length)
-//
-//					println(convertStreamToString(pr2.getErrorStream()))
-//
-//					val exitVal2 = pr2.waitFor();
-//					System.out.println("Exited with error code " + exitVal2);
-//
-//					tmpf.delete();
-//				}
-//				println("Took " + (System.nanoTime() - timer) / 1000000 + " ms")
-//
-//			} catch {
-//				case e: Exception => {
-//					System.out.println(e.toString());
-//					e.printStackTrace();
-//				}
-//			}
-//
-//		def convertStreamToString(is: InputStream): String = try {
-//			val src = Source.fromInputStream(is).getLines
-//			if (src.length > 0) src.reduceLeft(_ + "\n" + _) else ""
-//		} catch {
-//			case e: Exception => e.toString();
-//		}
-//	}
-//
-//}
