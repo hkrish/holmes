@@ -3,6 +3,7 @@ import java.io.BufferedReader
 import scala.actors.Actor
 import scala.actors.Actor._
 import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.io.InputStreamReader
 import java.io.InputStream
 import scala.io.Source
@@ -14,6 +15,11 @@ import org.im4java.process.ProcessStarter
 import org.im4java.core
 import org.im4java.core._
 
+/**
+ * crawl 
+ *    A Crawler for walking the filesystem and create/update wavelet signatures for 
+ *    certain 2d graphic files.
+ */
 object crawl{
 
 	val MAC = 1
@@ -23,8 +29,6 @@ object crawl{
 
 	var CONSOLE = 0
   
-  val crawlerFileFilter = new CrawlerFileFilter
-	
 	def main(args: Array[String]): Unit = {
 		val OSNAME = System.getProperty("os.name")
 		val OSVERSION = System.getProperty("os.version")
@@ -65,6 +69,8 @@ object crawl{
 				}
 			}
 		}
+
+    pUtil.CONSOLE = CONSOLE
 		
 		// Try to find ImageMagick
 		val imCheck = new ProcessBuilder("which", "convert").start();
@@ -78,14 +84,14 @@ object crawl{
 				case Some(a) => a match {
 					case whichstr(a, matchstr) => a + File.separator
 					case _ => {
-						printIMNotFound
-						sys.exit(2)
+						pUtil.printIMNotFound
+						sys.exit(0)
 						""
 					}
 				}
 				case None => {
-					printIMNotFound
-					sys.exit(2)
+					pUtil.printIMNotFound
+					sys.exit(0)
 					""
 				}
 			}
@@ -100,42 +106,58 @@ object crawl{
 		// If yes, check version
 		val imCheck2 = new ProcessBuilder(pathIM + "convert", "--version").start();
 		val IMCOPYRIGHT = convertStreamToString(imCheck2.getInputStream()) match {
-			case Some(a) => a
-			case None => {
-				printError("""Installed "convert" application is not part of the ImageMagick suite.""")
-				printIMNotFound
+			case Some(a) => a 	
+      case None => {
+				pUtil.printError("""Installed "convert" application is not part of the ImageMagick suite.""")
+				pUtil.printIMNotFound
 				println("Bye!")
-				sys.exit(2)
+				sys.exit(0)
 				""
 			}
 		}
 		imCheck2.waitFor()
 
-  // TODO use scala's regex pattern matching on case classes to do this job, above...
+    // FIXME This works in REPL and not here for some reason!
+    /*val imCopyMatcher = """(?dm)Version\s*:\s*(ImageMagick\s+\d+.\S+).*$\s*Copyright\s*:\s*(.*)$\s*(.*)$""".r*/
+    /*val CopyPrint = IMCOPYRIGHT match {*/
+    /*  case imCopyMatcher(a,b,c) =>  a + "---" + b*/
+    /*  case _ => "NONE"*/
+    /*}*/
+
 		if (IMCOPYRIGHT.indexOf("ImageMagick") < 0) {
-			printError("""Installed "convert" application is not part of the ImageMagick suite.""")
-			printIMNotFound
+			pUtil.printError("""Installed "convert" application is not part of the ImageMagick suite.""")
+			pUtil.printIMNotFound
 			println("Bye!")
-			sys.exit(2)
+			sys.exit(0)
 			// sys.exit should be safe till this point because 
 			// we havn't started any threads or opened any streams yet.
 		}
 
-		println("With help from\n" + IMCOPYRIGHT)
+		println("using - " + IMCOPYRIGHT)
 
 		if (args.length < 2) {
 			// Not enough Program Arguments
-			printError("Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [" + (if(args.length < 1)clr(0, 31) else "") +
-      "pathToSignatureDirectory"+  clr + "] ["+ clr(0, 31)+"pathToCrawl"+clr+"]")
+			pUtil.printError("Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [" + (if(args.length < 1)pUtil.clr(0, 31) else "") +
+      "pathToSignatureDirectory"+ pUtil.clr + "] ["+ pUtil.clr(0, 31)+"pathToCrawl"+pUtil.clr+"]")
 			println("Bye!")
 		} else {
 			// TODO check for directories
+     val  targetDir = if(args(1).endsWith(File.separator)) args(1) else args(1) + File.separator;
 
 			// Ok now lets do our stuff
 			try {
-				// FIXME 'stream' returns a bunch of '0's in Windows 7! Use bufferedImage for reliability!
-				// this is so far tested, successfully, only on mac.
-        
+        /*
+         * Prepare the ImageMagick operation to be performed
+         * the out should be a 8bit gray map of the YUV channels of the source resized to 256 x 256 pixels
+         * The channels are separated and appended vertically so that when the resulting stream is piped in,
+         *    |------|
+         *    |  Y   |  first 65536 bytes
+         *    |------|  
+         *    |  U   |  next 65536 bytes
+         *    |------|  
+         *    |  V   |  last 65536 bytes; a total of 196608 bytes.
+         *    |------|
+         */
         val cmd = new ConvertCmd();
         val op = new IMOperation();
         op.addImage();
@@ -143,51 +165,39 @@ object crawl{
         op.colorspace("YUV")
         op.separate()
         op.appendVertically()
-        op.addImage();
+        op.size(256, 768)
+        op.depth(8)
+        op.addImage("GRAY:-");
+        
+        var fileCount = 0;
+        pUtil.printStatus("crawl", "Crawling " + args(0) + " and Writing signatures to " + targetDir + "\n")
+        walkDir(new File(args(0)))
+        pUtil.printStatus("crawl", "Processing %d".format(fileCount) + " files.\n")
 
         /**
-         * A fairly straight forward fileSystem walker
+         * A fairly straight forward (depth first) fileSystem walker
+         * TODO Implement detaled logging of types of files crawled.
          */
         def walkDir(dir: File): Unit = {
-          for (f <- dir.listFiles()) {
-            val v = f.getPath().toLowerCase()
-            // TODO Use a filefilter!
-            if (v.endsWith(".jpg") || v.endsWith(".jpeg")) {
-              val pr = new IMExecActor(cmd, op)
+          for (f <- dir.listFiles(crawlerFileFilter)) {
+            if (f.isDirectory()) 
+              walkDir(f)
+            else{
+              // TODO Check if we have that file, if we have it check if the file has been modified
+              
+              // since we made the signature
+              val pr = new IMExecActor(cmd, op, targetDir)
               pr.start
               pr ! f
-              /*fileCount = fileCount + 1;*/
+              fileCount = fileCount + 1
             }
-           if (f.isDirectory()) walkDir(f);
           }
+          pUtil.printStatus("crawl", "%d".format(fileCount) + " files found.")
         }
 			} catch {
 				case e: Exception => e.printStackTrace()
 			}
 		}
-	}
-
-	def printIMNotFound = {
-		printError("""Crawler needs ImageMagick to run. Install ImageMagick (http://www.imagemagick.org)""")
-		printWarn("Then try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]")
-	}
-
-  def printError(str:String) {
-		println("[" + clr(0, 31) + "Error" + clr + "]: " + str)
-  }
-  def printWarn(str:String) {
-		println("[" + clr(0, 33) + "Warning" + clr + "]: " + str)
-  }
-
-	// ANSI coloured output on supported terminals
-	def clr(a: Int, b: Int) = {
-		// "\033[0;36m" for coloured text. 36-cyan and so on
-		if (CONSOLE > 0) "\033[" + a.toString + ";" + b.toString + "m" else ""
-	}
-
-	def clr = {
-		// "\033[0m" for normal colours
-		if (CONSOLE > 0) "\033[0m" else ""
 	}
 
 	def convertStreamToString(is: InputStream): Option[String] = try {
@@ -202,13 +212,31 @@ object crawl{
 }
 
 
-class IMExecActor(cmd: ConvertCmd, op: IMOperation) extends Actor {
-  val targetDir = "/Users/hari/Documents/Work/signatures/"
-  // TODO implement piping in to bufferedImage
+/**
+ * The workhorse. An actor that executes an IM4Java command and image operation, 
+ * pipes the result in, makes a WaveletSignature [[holmes-wavelet.WaveletSignature]]
+ * and saves the signature to the disc.
+ */
+class IMExecActor(cmd: ConvertCmd, op: IMOperation, targetDir:String) extends Actor {
   def act = {
     react {
       case f: File => try {
-        cmd.run(op, f.getAbsolutePath(), targetDir + f.getName() + ".png");
+        val st = System.nanoTime()
+
+        // Read the output of the IM command as a stream into memory
+        val bos = new ByteArrayOutputStream(196608);
+        val pipeOut:Pipe = new Pipe(null,bos);
+        cmd.setOutputConsumer(pipeOut)
+        cmd.run(op, f.getAbsolutePath())
+
+        val buff = bos.toByteArray();
+        bos.close()
+        
+        val iBuff = buff.map(_.toInt).toArray
+        if(iBuff.length >= 196608){
+          val sig = new WaveletSignature(iBuff, f.getAbsolutePath, f.lastModified);
+          WaveletSignatureFS.saveToGZ(sig, targetDir + f.hashCode + ".sigz")
+        }
       } catch {
         case e: Exception => e.printStackTrace()
       }
@@ -216,7 +244,10 @@ class IMExecActor(cmd: ConvertCmd, op: IMOperation) extends Actor {
   }
 }
 
-class CrawlerFileFilter extends FileFilter {
+/**
+ * FileFilter object used to filter filytypes during crawling
+ */
+object crawlerFileFilter extends FileFilter {
    /**
    * Suported file formats - by file extension
    * This is only a subset of fileformats Image magick supports
@@ -230,11 +261,76 @@ class CrawlerFileFilter extends FileFilter {
                                       ".sr2", ".srf", ".svg", ".svgz", ".tga", ".tiff", ".tiff64", ".tif",
                                       ".xcf")
 
-  // Implementation is *imparative
+  // FIXME Implementation is *imparative
   override def accept(f:File):Boolean = {
+    if(f.isDirectory()) return true
     val n = f.getName().toLowerCase();
     for(ff <- fileTypes) if(n.endsWith(ff)) return true;
     return false;
   }
 }
 
+/**
+ * FileFilter object used to filter signature files.
+ */
+object signatureFileFilter extends FileFilter {
+  // FIXME Implementation is *imparative
+  override def accept(f:File):Boolean = {
+    val n = f.getName().toLowerCase();
+    if(n.endsWith(".sig") || n.endsWith(".sigz")) return true;
+    return false;
+  }
+}
+
+
+/**
+ * Object with a collection of helper utilities for printing formatted console output
+ */
+object pUtil {
+  // To clear current line in the console when we need to update status.
+  val clearString = Array.fill(80){" "}.mkString
+  var CONSOLE = 0
+
+  def printError(str:String) {
+		println("[" + clr(0, 31) + "Error" + clr + "]: " + str)
+  }
+  def printWarn(str:String) {
+		println("[" + clr(0, 33) + "Warning" + clr + "]: " + str)
+  }
+  def printStatus(s1:String, s2:String) {
+    print("\r" + clearString + "\r[" + clr(0, 34) + s1 + clr + "]: " + s2)
+  }
+
+	/**
+   * ANSI coloured output on supported terminals.
+   * @param a the style code
+   * @param b the color code
+   * @return the ANSI escape code.
+   */
+	def clr(a: Int, b: Int) = {
+		if (CONSOLE > 0) "\033[" + a.toString + ";" + b.toString + "m" else ""
+	}
+
+  /**
+   * Reverts the console colors to normal
+   * @return the ANSI escape code to set the console colours to normal.
+   */
+	def clr = {
+		if (CONSOLE > 0) "\033[0m" else ""
+	}
+
+  def makeProgressString(ratio:Double,len:Int):String = {
+    try{
+      // TODO Use fill instead of Stream.continually
+      val str = Stream.continually("#").take((ratio * len).toInt).toArray.reduceLeft(_+_)
+       "|" + str + Stream.continually(".").take(len - str.length).toArray.reduceLeft(_+_) + "|"
+    }catch{
+      case e:Exception => "|" + Stream.continually(".").take(len).toArray.reduceLeft(_+_) + "|"
+    }
+  }
+
+  def printIMNotFound = {
+    printError("""Crawler needs ImageMagick to run. Install ImageMagick (http://www.imagemagick.org)""")
+      printWarn("Then try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]")
+  }
+}

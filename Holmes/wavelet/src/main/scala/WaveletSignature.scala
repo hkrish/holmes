@@ -1,18 +1,18 @@
 
 import scala.math._
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.ArrayBuffer
 import WaveLetSignatureConstants._
 
-class WaveletSignature(imgyui: List[Int], fname: String, lastmod: Long) extends Serializable {
+class WaveletSignature(imgyui: Array[Int], fname: String, lastmod: Long) extends Serializable {
 	var fileName: String = fname
 	var lastModified: Long = lastmod
 
-	val Y = new ListBuffer[Int]()
-	val U = new ListBuffer[Int]()
-	val V = new ListBuffer[Int]()
-	val Ys = new ListBuffer[Int]()
-	val Us = new ListBuffer[Int]()
-	val Vs = new ListBuffer[Int]()
+	val Y = new ArrayBuffer[Int]()
+	val U = new ArrayBuffer[Int]()
+	val V = new ArrayBuffer[Int]()
+	val Ys = new ArrayBuffer[Int]()
+	val Us = new ArrayBuffer[Int]()
+	val Vs = new ArrayBuffer[Int]()
 	var sigY = 0.0
 	var sigU = 0.0
 	var sigV = 0.0
@@ -44,7 +44,7 @@ class WaveletSignature(imgyui: List[Int], fname: String, lastmod: Long) extends 
 	}
 
 	def this() = this(null, "", 0)
-	def this(imgyui: List[Int]) = this(imgyui, "", 0)
+	def this(imgyui: Array[Int]) = this(imgyui, "", 0)
 	def this(fname: String, lastmod: Long) = this(null, fname, lastmod)
 
 	def InitSignature(percent: Int) = {
@@ -57,7 +57,7 @@ class WaveletSignature(imgyui: List[Int], fname: String, lastmod: Long) extends 
 		sigVdivb = sigV / beta
 	}
 
-	private def reduce(y2: ListBuffer[Int], stride: Int, width: Int) = {
+	private def reduce(y2: ArrayBuffer[Int], stride: Int, width: Int) = {
 		val ep1 = (stride - 1) * width
 		val ret = new Array[Int](stride * stride)
 		var cnt = 0
@@ -70,7 +70,7 @@ class WaveletSignature(imgyui: List[Int], fname: String, lastmod: Long) extends 
 		ret
 	}
 
-	private def reduce(y2: Array[Int], stride: Int, width: Int, dst: ListBuffer[Int]) = {
+	private def reduce(y2: Array[Int], stride: Int, width: Int, dst: ArrayBuffer[Int]) = {
 		val ep1 = (stride - 1) * width
 
 		for (i <- 0 to ep1 by width)

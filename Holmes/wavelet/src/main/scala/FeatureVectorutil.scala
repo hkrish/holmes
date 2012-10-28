@@ -1,5 +1,5 @@
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.ArrayBuffer
 import WaveLetSignatureConstants._
 
 object FeatureVectorutil {
@@ -19,7 +19,7 @@ object FeatureVectorutil {
 	 * @param to
 	 * @return The computer Euclidean Distance between two matrices
 	 */
-	private def euclidianDist(m1: ListBuffer[Int], m2: ListBuffer[Int], stride: Int): Double = {
+	private def euclidianDist(m1: ArrayBuffer[Int], m2: ArrayBuffer[Int], stride: Int): Double = {
 		var ret: Double = 0.0
 		val SQ = stride * stride
 		var i = 0

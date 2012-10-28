@@ -8,3 +8,54 @@ exit
 run
 run /Users/hari
 run
+clean
+compile:run
+clean:compile:run
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile:run
+clean
+compile
+run "/Users/hari/Work/signatures"
+run "/Users/hari/Documents/Work/signatures/"
+run "/Users/hari/Documents/Work/signatures/" /Volumes/HK\'s\ passport/My\ pictures/cars
+run "/Users/hari/Documents/Work/signatures/" "/Volumes/HK's passport/My pictures/cars"
+run  "/Volumes/HK's passport/My pictures/cars" /Users/hari/Documents/Work/signatures/"
+run "/Users/hari/Documents/Work/signatures/" "/Volumes/HK's passport/My pictures/cars"
+run  "/Volumes/HK's passport/My pictures/cars" /Users/hari/Documents/Work/signatures/"
+project holmes-wavelet
+package
+run  "/Volumes/HK's passport/My pictures/cars" /Users/hari/Documents/Work/signatures/"
+last holmes-crawl/compile:run
+run  "/Volumes/HK's passport/My pictures/cars" /Users/hari/Documents/Work/signatures/"
+run  "/Volumes/HK's passport/My pictures/Bikes/Bajaj" /Users/hari/Documents/Work/signatures/"
+run  "/Volumes/HK's passport/My pictures/Bikes/Library" /Users/hari/Documents/Work/signatures/"
+run  "/Volumes/HK's passport/My pictures/cars" /Users/hari/Documents/Work/signatures/"
+clean
+compile
+run
+run  "/Volumes/HK's passport/My pictures/Bikes/Library" /Users/hari/Documents/Work/signatures/"
+run  "/Volumes/HK's passport/My pictures/cars" /Users/hari/Documents/Work/signatures/"
+run  "/Volumes/HK's passport/My pictures/cars" /Users/hari/Documents/Work/signatures/
+clean
+compile
+clean
+compile
