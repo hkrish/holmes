@@ -9,6 +9,7 @@ import java.io.InputStream
 import scala.io.Source
 import java.io.File
 import java.io.FileFilter
+import java.io.FilenameFilter
 import org.im4java.process
 import org.im4java.process._
 import org.im4java.process.ProcessStarter
@@ -129,8 +130,6 @@ object crawl{
 			pUtil.printIMNotFound
 			println("Bye!")
 			sys.exit(0)
-			// sys.exit should be safe till this point because 
-			// we havn't started any threads or opened any streams yet.
 		}
 
 		println("using - " + IMCOPYRIGHT)
@@ -142,7 +141,18 @@ object crawl{
 			println("Bye!")
 		} else {
 			// TODO check for directories
-     val  targetDir = if(args(1).endsWith(File.separator)) args(1) else args(1) + File.separator;
+      val  targetDir = if(args(1).endsWith(File.separator)) args(1) else args(1) + File.separator;
+      
+      val sigd = new File(targetDir)
+      val sigList = if(sigd.exists && sigd.isDirectory){
+        sigd.list(signatureFilenameFilter).map(_.split("\\.")(0).toInt)
+      }else {
+        pUtil.printError("""Signature directory doesnot exist or is invalid.""")
+        println("Bye!")
+        sys.exit(0)
+        // sys.exit should be safe till this point because 
+        // we havn't started any threads or opened any streams yet.
+      }
 
 			// Ok now lets do our stuff
 			try {
@@ -273,10 +283,10 @@ object crawlerFileFilter extends FileFilter {
 /**
  * FileFilter object used to filter signature files.
  */
-object signatureFileFilter extends FileFilter {
+object signatureFilenameFilter extends FilenameFilter {
   // FIXME Implementation is *imparative
-  override def accept(f:File):Boolean = {
-    val n = f.getName().toLowerCase();
+  override def accept(f:File, s:String):Boolean = {
+    val n = s.toLowerCase();
     if(n.endsWith(".sig") || n.endsWith(".sigz")) return true;
     return false;
   }
