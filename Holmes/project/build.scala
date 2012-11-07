@@ -9,9 +9,8 @@ object holmes extends Build {
                            base = file("crawl")) dependsOn(wavelet)
 
     lazy val search = Project(id = "holmes-search",
-                           base = file("search"))
+                           base = file("search")) dependsOn(wavelet)
 
     lazy val wavelet = Project(id = "holmes-wavelet",
                            base = file("wavelet"))
-
 }

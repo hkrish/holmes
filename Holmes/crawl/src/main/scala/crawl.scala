@@ -21,7 +21,7 @@ import org.im4java.core._
  *    A Crawler for walking the filesystem and create/update wavelet signatures for 
  *    certain 2d graphic files.
  */
-object crawl{
+object crawl {
 
 	val MAC = 1
 	val WIN = 2
@@ -143,6 +143,12 @@ object crawl{
 			// TODO check for directories
       val  targetDir = if(args(1).endsWith(File.separator)) args(1) else args(1) + File.separator;
       
+      if(!(new File(args(0)).exists)) {
+        pUtil.printError("""Target directory doesnot exist or is invalid.""")
+        println("Bye!")
+        sys.exit(0)
+      }
+
       val sigd = new File(targetDir)
       val sigList = if(sigd.exists && sigd.isDirectory){
         sigd.list(signatureFilenameFilter).map(_.split("\\.")(0).toInt)
@@ -194,15 +200,17 @@ object crawl{
               walkDir(f)
             else{
               // TODO Check if we have that file, if we have it check if the file has been modified
-              
-              // since we made the signature
-              val pr = new IMExecActor(cmd, op, targetDir)
-              pr.start
-              pr ! f
-              fileCount = fileCount + 1
+              if(!(sigList.exists(_ == f.hashCode) && WaveletSignatureFS.getSIgnatureDetailsGZ(targetDir + f.hashCode + ".sigz")._2 ==
+                f.lastModified())){
+                  // since we made the signature
+                  val pr = new IMExecActor(cmd, op, targetDir)
+                  pr.start
+                  pr ! f
+                  fileCount = fileCount + 1
+                }
             }
+            pUtil.printStatus("crawl", "%d".format(fileCount) + " files found.")
           }
-          pUtil.printStatus("crawl", "%d".format(fileCount) + " files found.")
         }
 			} catch {
 				case e: Exception => e.printStackTrace()
@@ -344,3 +352,4 @@ object pUtil {
       printWarn("Then try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [pathToSignatureDirectory] [pathToCrawl]")
   }
 }
+
