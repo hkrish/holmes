@@ -41,7 +41,7 @@ object crawl {
 		// Mac < 10.5? - test
 		// Win <= XP? - test
 		val macPattern = """(.*\s*OS X\s*)""".r
-		val winPattern = """(.*\s+Windows\s*)""".r // ? test
+		val winPattern = """(.*\s*Windows\s*.*)""".r // ? test
 		// val nixPattern = 
 		val OS = OSNAME match {
 			case macPattern(c) => MAC
@@ -74,7 +74,7 @@ object crawl {
     pUtil.CONSOLE = CONSOLE
 		
 		// Try to find ImageMagick
-		val imCheck = new ProcessBuilder("which", "convert").start();
+		val imCheck = if(OS == MAC) new ProcessBuilder("which", "convert").start() else if(OS == WIN)  new ProcessBuilder("cmd.exe", "where", "convert").start() 
 		val imCheckOut = convertStreamToString(imCheck.getInputStream())
 		imCheck.waitFor()
 

@@ -12,6 +12,11 @@ object search {
 	var CONSOLE = 0
   
   def main(args:Array[String]):Unit = {
+    /*
+     * retrieve options as a map
+     */
+    val options = parseArgs(args)
+
     val OSNAME = System.getProperty("os.name")
     val OSVERSION = System.getProperty("os.version")
 
@@ -49,8 +54,107 @@ object search {
 
     pUtil.CONSOLE = CONSOLE
 
+		// Try to find ImageMagick
+		val imCheck = new ProcessBuilder("which", "convert").start();
+		val imCheckOut = convertStreamToString(imCheck.getInputStream())
+		imCheck.waitFor()
+
+		val pathIM = if (System.getProperty("PATH_IM") == null) {
+			val matchstr = File.separator + "convert"
+			val whichstr = ("""(.*)(""" + matchstr + ")").r;
+			imCheckOut match {
+				case Some(a) => a match {
+					case whichstr(a, matchstr) => a + File.separator
+					case _ => {
+						pUtil.printIMNotFound
+						sys.exit(0)
+						""
+					}
+				}
+				case None => {
+					pUtil.printIMNotFound
+					sys.exit(0)
+					""
+				}
+			}
+		} else if (System.getProperty("PATH_IM").endsWith(File.separator)) System.getProperty("PATH_IM") else System.getProperty("PATH_IM") + File.separator
+
+    /**
+     * Setup IM4Java
+     */
+    ProcessStarter.setGlobalSearchPath(pathIM);
+
+		// Check if "convert" is "ImageMagick convert" or some other app
+		// If yes, check version
+		val imCheck2 = new ProcessBuilder(pathIM + "convert", "--version").start();
+		val IMCOPYRIGHT = convertStreamToString(imCheck2.getInputStream()) match {
+			case Some(a) => a 	
+      case None => {
+				pUtil.printError("""Installed "convert" application is not part of the ImageMagick suite.""")
+				pUtil.printIMNotFound
+				println("Bye!")
+				sys.exit(0)
+				""
+			}
+		}
+		imCheck2.waitFor()
+
+		if (IMCOPYRIGHT.indexOf("ImageMagick") < 0) {
+			pUtil.printError("""Installed "convert" application is not part of the ImageMagick suite.""")
+			pUtil.printIMNotFound
+			println("Bye!")
+			sys.exit(0)
+		}
+
+		println("using - " + IMCOPYRIGHT)
+
+		if (args.length < 2) {
+			// Not enough Program Arguments
+			pUtil.printError("Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [" + (if(args.length < 1)pUtil.clr(0, 31) else "") +
+      "pathToSignatureDirectory"+ pUtil.clr + "] ["+ pUtil.clr(0, 31)+"pathToCrawl"+pUtil.clr+"]")
+			println("Bye!")
+		} else {
+      val  targetDir = if(args(1).endsWith(File.separator)) args(1) else args(1) + File.separator;
+      
+      if(!(new File(args(0)).exists)) {
+        pUtil.printError("""Target directory doesnot exist or is invalid.""")
+        println("Bye!")
+        sys.exit(0)
+      }
+
+      val sigd = new File(targetDir)
+      val sigList = if(sigd.exists && sigd.isDirectory){
+        sigd.list(signatureFilenameFilter).map(_.split("\\.")(0).toInt)
+      }else {
+        pUtil.printError("""Signature directory doesnot exist or is invalid.""")
+        println("Bye!")
+        sys.exit(0)
+        // sys.exit should be safe till this point because 
+        // we havn't started any threads or opened any streams yet.
+      }
+
+			// Ok now lets do our stuff
+			try {
+        /**
+         * Prepare a command for making the thumbnails
+         */
+        val cmd = new ConvertCmd();
+        val op = new IMOperation();
+        op.addImage();
+        op.resize(256, 256)
+        op.colorspace("YUV")
+        op.separate()
+        op.appendVertically()
+        op.size(256, 768)
+        op.depth(8)
+        op.addImage("GRAY:-");
+
+      } catch {
+        case e:Exception => e.printStackTrace
+      }
   }
 }
+
 
 /**
  * FileFilter object used to filter signature files.
