@@ -1,6 +1,14 @@
 
+import java.io.InputStreamReader
+import java.io.InputStream
+import scala.io.Source
 import java.io.File
 import java.io.FilenameFilter
+import org.im4java.process
+import org.im4java.process._
+import org.im4java.process.ProcessStarter
+import org.im4java.core
+import org.im4java.core._
 
 object search {
 
@@ -77,7 +85,8 @@ object search {
 					""
 				}
 			}
-		} else if (System.getProperty("PATH_IM").endsWith(File.separator)) System.getProperty("PATH_IM") else System.getProperty("PATH_IM") + File.separator
+		} else if (System.getProperty("PATH_IM").endsWith(File.separator)) 
+      System.getProperty("PATH_IM") else System.getProperty("PATH_IM") + File.separator
 
     /**
      * Setup IM4Java
@@ -142,17 +151,27 @@ object search {
         val op = new IMOperation();
         op.addImage();
         op.resize(256, 256)
-        op.colorspace("YUV")
-        op.separate()
-        op.appendVertically()
-        op.size(256, 768)
-        op.depth(8)
-        op.addImage("GRAY:-");
+        op.addImage("JPEG:-");
 
       } catch {
         case e:Exception => e.printStackTrace
       }
+    }
   }
+
+  def doPreCheck:(ostype:Int, consoletype:Int, impath:String) = {
+    
+  }
+
+  def convertStreamToString(is: InputStream): Option[String] = try {
+		val src = Source.fromInputStream(is).getLines
+		if (src.isEmpty) None else Some(src.reduceLeft(_ + "\n" + _))
+	} catch {
+		case e: Exception => {
+			e.printStackTrace()
+			None
+		}
+	}
 }
 
 
