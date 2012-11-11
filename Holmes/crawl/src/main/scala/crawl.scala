@@ -74,7 +74,8 @@ object crawl {
     pUtil.CONSOLE = CONSOLE
 		
 		// Try to find ImageMagick
-		val imCheck = if(OS == MAC) new ProcessBuilder("which", "convert").start() else if(OS == WIN)  new ProcessBuilder("cmd.exe", "where", "convert").start() 
+		val imCheck:Process = if(OS == MAC || OS == NIX) new ProcessBuilder("which", "convert").start() else new ProcessBuilder("cmd.exe",
+      "where", "convert").start()
 		val imCheckOut = convertStreamToString(imCheck.getInputStream())
 		imCheck.waitFor()
 
@@ -139,6 +140,7 @@ object crawl {
 			pUtil.printError("Try: scala -DPATH_IM=[pathToImageMagick] crawler.IMCrawler [" + (if(args.length < 1)pUtil.clr(0, 31) else "") +
       "pathToSignatureDirectory"+ pUtil.clr + "] ["+ pUtil.clr(0, 31)+"pathToCrawl"+pUtil.clr+"]")
 			println("Bye!")
+      sys.exit(0)
 		} else {
 			// TODO check for directories
       val  targetDir = if(args(1).endsWith(File.separator)) args(1) else args(1) + File.separator;
