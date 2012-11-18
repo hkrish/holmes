@@ -94,7 +94,7 @@ object search {
       else
         firstList.toList.map((_, 0.0))
 
-      resultList.map(a => println(a._2 + " - " + a._1.fileName))
+      resultList.map(a => println(a._2 + ":" + a._1.fileName))
 
     } catch {
       case e:Exception => e.printStackTrace
