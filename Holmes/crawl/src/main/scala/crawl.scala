@@ -41,21 +41,21 @@ object crawl {
   var sigDir:String = ".sig"
   
 	def main(args: Array[String]): Unit = {
-    try {
-      val line:CommandLine = parser.parse( options, args )
-      sigDir = new File(if(line.hasOption( "signature" )) line.getOptionValue("signature") else sigDir).getAbsolutePath + File.separator
-      val leftover = line.getArgs
-      crawlDir = if(leftover.length > 0) leftover(0) else new File("").getAbsolutePath + File.separator
-    }catch{
-      case e:ParseException => System.out.println( "Unexpected exception:" + e.getMessage() )
-    }
-
     /**
      * Setup IM4Java and other variables
      */
     println("Holmes Crawler version 1.0")
     pUtil.CONSOLE = 1
     ProcessStarter.setGlobalSearchPath(System.getenv("PATH"))
+
+    try {
+      val line:CommandLine = parser.parse( options, args )
+      sigDir = new File(if(line.hasOption( "signature" )) line.getOptionValue("signature") else sigDir).getAbsolutePath + File.separator
+      val leftover = line.getArgs
+      crawlDir = if(leftover.length > 0) leftover(0) else new File("").getAbsolutePath + File.separator
+    }catch{
+      case e:ParseException => pUtil.printError( "Error while parsing options :" + e.getMessage())
+    }
 
     val sigd = new File(sigDir)
     if(!sigd.exists || !sigd.isDirectory)
@@ -82,8 +82,8 @@ object crawl {
        *    |  V   |  last 65536 bytes; a total of 196608 bytes.
        *    |------|
        */
-      val cmd = new ConvertCmd();
-      val op = new IMOperation();
+      val cmd = new ConvertCmd()
+      val op = new IMOperation()
       op.addImage();
       op.resize(256, 256, "!")
       op.colorspace("YUV")
@@ -91,7 +91,7 @@ object crawl {
       op.appendVertically()
       op.size(256, 768)
       op.depth(8)
-      op.addImage("GRAY:-");
+      op.addImage("GRAY:-")
       
       var fileCount = 0;
       pUtil.printStatus("crawl", "Crawling " + crawlDir + " and Writing signatures to " + sigDir + "\n")

@@ -3,12 +3,12 @@ import scala.collection.mutable.ArrayBuffer
 import WaveLetSignatureConstants._
 
 object FeatureVectorutil {
-	def checkSigmaother(query: WaveletSignature, other: WaveletSignature): Boolean = {
+	def checkSigmaWith(query: WaveletSignature, other: WaveletSignature): Boolean = {
 		(query.sigYb < other.sigY && other.sigY < query.sigYdivb) || ((query.sigUb < other.sigU && other.sigU < query.sigUdivb) && (query.sigVb < other.sigV && other.sigV < query.sigVdivb))
 	}
 
 	def getFirstMatrixDistanceWith(query: WaveletSignature, other: WaveletSignature): Double = {
-		euclidianDist(query.Ys, other.Ys, S1) + euclidianDist(query.Us, other.Us, S1) + euclidianDist(query.Vs, other.Vs, S1);
+		euclidianDist(query.Ys, other.Ys, S2) + euclidianDist(query.Us, other.Us, S2) + euclidianDist(query.Vs, other.Vs, S2);
 	}
 
 	def getDistanceWith(query: WaveletSignature, other: WaveletSignature): Double = {
@@ -23,6 +23,8 @@ object FeatureVectorutil {
 		var ret: Double = 0.0
 		val SQ = stride * stride
 		var i = 0
+    
+    /*println(SQ +" "+ stride +" "+ S1 +" "+ S2)*/
 
 		for (i <- 0 until SQ) {
 			ret += (m1(i) - m2(i)) * (m1(i) - m2(i));

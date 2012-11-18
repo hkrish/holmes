@@ -47,7 +47,7 @@ class WaveletSignature(imgyui: Array[Int], fname: String, lastmod: Long) extends
 	def this(imgyui: Array[Int]) = this(imgyui, "", 0)
 	def this(fname: String, lastmod: Long) = this(null, fname, lastmod)
 
-	def InitSignature(percent: Int) = {
+	def initSignature(percent: Int) = {
 		val beta: Double = 1.0 - percent / 100.0
 		sigYb = sigY * beta
 		sigUb = sigU * beta
