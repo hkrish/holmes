@@ -9,7 +9,7 @@ import org.im4java.process._
 import org.im4java.process.ProcessStarter
 import org.im4java.core
 import org.im4java.core._
-import 
+import org.apache.commons.cli._
 
 object search {
 	val MAC = 1
@@ -17,12 +17,15 @@ object search {
 	val NIX = 3
 	val NUL = -1
 
-  def main(args:Array[String]):Unit = {
-    /*
-     * retrieve options as a map
-     */
-    val options = parseArgs(args)
+  /*
+   * Make options
+   */
+  val parser:CommandLineParser = new PosixParser
+  val options:Options = new Options
+  options.addOption( "l", "level", true, "Search level 1=prefilter, 2=preliminary, 3=thorough[default]." )
+  options.addOption( "s", "signature", true, "the directory that contains signatures [.sig" + File.separator + "]" )
 
+  def main(args:Array[String]):Unit = {
     /**
      * Setup IM4Java and other variables
      */
@@ -72,11 +75,7 @@ object search {
     }
   }
 
-  def parseArgs(args:Array[String]):Array[String] = {
-    args
-  }
-
-  def doPreCheck() = {
+  def doPreCheck():String = {
     println("Holmes Searcher version 1.0")
 
 		// Try to find ImageMagick
@@ -94,7 +93,7 @@ object search {
     return pathIM
   }
 
-  def convertStreamToString(is: InputStream): Option[String] = try {
+  def convertStreamToString(is: InputStream): scala.Option[String] = try {
 		val src = Source.fromInputStream(is).getLines
 		if (src.isEmpty) None else Some(src.reduceLeft(_ + "\n" + _))
 	} catch {
