@@ -9,9 +9,9 @@ import org.im4java.process._
 import org.im4java.process.ProcessStarter
 import org.im4java.core
 import org.im4java.core._
+import 
 
 object search {
-
 	val MAC = 1
 	val WIN = 2
 	val NIX = 3
@@ -26,8 +26,8 @@ object search {
     /**
      * Setup IM4Java and other variables
      */
-    val (os, console, pathIM) = doPreCheck
-    pUtil.CONSOLE = console
+    val pathIM = doPreCheck
+    pUtil.CONSOLE = 1
     ProcessStarter.setGlobalSearchPath(pathIM);
 
 		if (args.length < 2) {
@@ -41,7 +41,7 @@ object search {
       if(!(new File(args(0)).exists)) {
         pUtil.printError("""Target directory doesnot exist or is invalid.""")
         println("Bye!")
-        sys.exit(0)
+        sys.exit(0) // TODO Safe?
       }
 
       val sigd = new File(targetDir)
@@ -50,8 +50,9 @@ object search {
       }else {
         pUtil.printError("""Signature directory doesnot exist or is invalid.""")
         println("Bye!")
-        sys.exit(0)
-        // sys.exit should be safe till this point because 
+        sys.exit(0) // TODO Safe?
+        // sys.exit should be safe till this point because  
+        //
         // we havn't started any threads or opened any streams yet.
       }
 
@@ -76,88 +77,21 @@ object search {
   }
 
   def doPreCheck() = {
-    val OSNAME = System.getProperty("os.name")
-    val OSVERSION = System.getProperty("os.version")
-
     println("Holmes Searcher version 1.0")
-    println(OSNAME + " " + OSVERSION)
-
-    val macPattern = """(.*\s*OS X\s*)""".r
-    val winPattern = """(.*\s*Windows\s*.*)""".r // ? test
-    // val nixPattern = 
-    val OS = OSNAME match {
-      case macPattern(c) => MAC
-      case winPattern(c) => WIN
-      case c => NUL
-    }
-
-    // Find ConsoleType
-    val CONSOLE = if (OS == MAC || OS == NIX) {
-      val termprog = "(iTerm.*)|(Apple_Terminal)".r
-      System.getenv("TERM_PROGRAM") match {
-        case termprog(a, b) => 1
-        case _ => {
-          val termtype = "(xterm)(-color|-256color){0,1}".r
-          System.getenv("TERM") match {
-            case termtype(a, b) => 1
-            case _ => 0
-          }
-        }
-      }
-    } else 0
 
 		// Try to find ImageMagick
-    // TODO do not try to find it ourselves. Try PATH_IM variable, use MAGICK_HOME?
-		val imCheck = new ProcessBuilder("which", "convert").start();
-		val imCheckOut = convertStreamToString(imCheck.getInputStream())
-		imCheck.waitFor()
+    val magickHome = try{
+      System.getenv("MAGICK_HOME")
+    }catch{ 
+      case e:Exception => e.printStackTrace()
+      ""
+    } 
 
-		val pathIM = if (System.getProperty("PATH_IM") == null) {
-			val matchstr = File.separator + "convert"
-			val whichstr = ("""(.*)(""" + matchstr + ")").r;
-			imCheckOut match {
-				case Some(a) => a match {
-					case whichstr(a, matchstr) => a + File.separator
-					case _ => {
-						pUtil.printIMNotFound
-						sys.exit(0)
-						""
-					}
-				}
-				case None => {
-					pUtil.printIMNotFound
-					sys.exit(0)
-					""
-				}
-			}
-		} else if (System.getProperty("PATH_IM").endsWith(File.separator)) 
-      System.getProperty("PATH_IM") else System.getProperty("PATH_IM") + File.separator
+    val pathIM = if(magickHome != "")
+      (if(magickHome.endsWith(File.separator)) magickHome else magickHome + File.separator) + "bin" + File.separator
+    else ""
 
-		// Check if "convert" is "ImageMagick convert" or some other app
-		// If yes, check version
-		val imCheck2 = new ProcessBuilder(pathIM + "convert", "--version").start();
-		val IMCOPYRIGHT = convertStreamToString(imCheck2.getInputStream()) match {
-			case Some(a) => a 	
-      case None => {
-				pUtil.printError("""Installed "convert" application is not part of the ImageMagick suite.""")
-				pUtil.printIMNotFound
-				println("Bye!")
-				sys.exit(0)
-				""
-			}
-		}
-		imCheck2.waitFor()
-
-		if (IMCOPYRIGHT.indexOf("ImageMagick") < 0) {
-			pUtil.printError("""Installed "convert" application is not part of the ImageMagick suite.""")
-			pUtil.printIMNotFound
-			println("Bye!")
-			sys.exit(0)
-		}
-
-		println("using - " + IMCOPYRIGHT)
-
-    (OS, CONSOLE, pathIM)
+    return pathIM
   }
 
   def convertStreamToString(is: InputStream): Option[String] = try {
@@ -237,5 +171,4 @@ object pUtil {
       printWarn("Then try: search [pathToSignatureDirectory] [pathToCrawl]")
   }
 }
-
 

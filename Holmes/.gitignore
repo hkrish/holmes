@@ -1,8 +1,10 @@
-/target
-/.settings
-/.cache
-/project/target
-/search/target
-/crawl/target
-/wavelet/target
+target/
+.settings
+.cache
+project/target
+search/target
+crawl/target
+wavelet/target
+.DS_Store
+.ensime_lucene/
 
