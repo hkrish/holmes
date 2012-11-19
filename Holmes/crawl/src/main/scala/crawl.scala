@@ -24,14 +24,8 @@ import org.apache.commons.cli._
  *    certain 2d graphic files.
  */
 object crawl {
-
-	val MAC = 1
-	val WIN = 2
-	val NIX = 3
-	val NUL = -1
-
   /*
-   * Make options
+   * Make commandline options
    */
   val parser:CommandLineParser = new PosixParser
   val options:Options = new Options

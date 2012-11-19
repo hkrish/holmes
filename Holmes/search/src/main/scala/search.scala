@@ -28,14 +28,23 @@ object search {
   options.addOption( "s", "signature", true, "the directory that contains signatures [.sig" + File.separator + "]" )
 
   var level:Int = 3
+  var cutoffBeta:Int = 50
   var cutoff1:Double = 0.5
   var cutoff2:Double = 0.25
   var sigDir = ".sig"
   var searchImg:WaveletSignature = _
 
   def main(args:Array[String]):Unit = {
+      search(args) match {
+        case Some(a) => a.map(a => println(a._2 + ":" + a._1.fileName))
+        case _ => pUtil.printStatus("search", "No results")
+      }
+  }
+
+  def search(args:Array[String]):scala.Option[List[(WaveletSignature, Double)]] = {
     /**
      * Setup IM4Java and other variables
+     * TODO: move commandline parsing to the main method
      */
     println("Holmes Searcher version 1.0")
     pUtil.CONSOLE = 1
@@ -52,7 +61,7 @@ object search {
         searchImg = getWaveletSignature(new File(leftover(0)).getAbsolutePath) match {
           case Some(a) => a
           case _ => {
-            pUtil.printError("no valid image to Search")
+            pUtil.printError("no valid image to Search for")
             sys.exit(0)
           }
         }
@@ -77,7 +86,7 @@ object search {
  
     // Ok now lets do our stuff
     try{
-      searchImg.initSignature(40)
+      searchImg.initSignature(cutoffBeta)
 
       val firstList = sigList.filter(sig => FeatureVectorutil.checkSigmaWith(searchImg, sig))
       val secondList = if(level > 1){
@@ -94,10 +103,10 @@ object search {
       else
         firstList.toList.map((_, 0.0))
 
-      resultList.map(a => println(a._2 + ":" + a._1.fileName))
-
+      Some(resultList)
     } catch {
       case e:Exception => e.printStackTrace
+      None
     }
   }
 
@@ -135,16 +144,6 @@ object search {
       }
     }
   }
-
-  def convertStreamToString(is: InputStream): scala.Option[String] = try {
-		val src = Source.fromInputStream(is).getLines
-		if (src.isEmpty) None else Some(src.reduceLeft(_ + "\n" + _))
-	} catch {
-		case e: Exception => {
-			e.printStackTrace()
-			None
-		}
-	}
 }
 
 
