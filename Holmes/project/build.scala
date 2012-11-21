@@ -42,10 +42,7 @@ object holmes extends Build {
 
   lazy val holmes = Project(id = "holmes",
                           base = file("."),
-                          settings = buildSettings) aggregate(holmes1, crawl, search, wavelet)
-
-  lazy val holmes1 = Project(id = "holmes-holmes",
-                         base = file("holmes")) dependsOn(wavelet, search)
+                          settings = buildSettings) aggregate(crawl, search, wavelet)
 
   lazy val crawl = Project(id = "holmes-crawl",
                          base = file("crawl")) dependsOn(wavelet)
