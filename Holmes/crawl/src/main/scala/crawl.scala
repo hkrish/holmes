@@ -30,9 +30,11 @@ object crawl {
   val parser:CommandLineParser = new PosixParser
   val options:Options = new Options
   options.addOption( "s", "signature", true, "the directory that contains signatures [.sig" + File.separator + "]" )
+  options.addOption( "v", "verbose", false, "print detailed error messages" )
 
   var crawlDir:String = _
   var sigDir:String = ".sig"
+  var verbose:Boolean = false
   
 	def main(args: Array[String]): Unit = {
     /**
@@ -45,6 +47,7 @@ object crawl {
     try {
       val line:CommandLine = parser.parse( options, args )
       sigDir = new File(if(line.hasOption( "signature" )) line.getOptionValue("signature") else sigDir).getAbsolutePath + File.separator
+      verbose = if(line.hasOption( "verbose" )) line.getOptionValue("verbose").toBoolean else verbose
       val leftover = line.getArgs
       crawlDir = if(leftover.length > 0) leftover(0) else new File("").getAbsolutePath + File.separator
     }catch{
@@ -60,7 +63,7 @@ object crawl {
         // sys.exit should be safe till this point because 
         // we havn't started any threads or opened any streams yet.
       }
-     val sigList = sigd.list(signatureFilenameFilter).map(_.split("\\.")(0).toInt)
+    val sigList = sigd.list(signatureFilenameFilter).map(_.split("\\.")(0).toInt)
 
     // Ok now lets do our stuff
     try {
@@ -105,7 +108,7 @@ object crawl {
             if(!(sigList.exists(_ == f.hashCode) && WaveletSignatureFS.getSIgnatureDetailsGZ(sigDir + f.hashCode + ".sigz")._2 ==
               f.lastModified())){
                 // since we made the signature
-                val pr = new IMExecActor(cmd, op, sigDir)
+                val pr = new IMExecActor(cmd, op, sigDir, verbose)
                 pr.start
                 pr ! f
                 fileCount = fileCount + 1
@@ -115,7 +118,7 @@ object crawl {
         }
       }
     } catch {
-      case e: Exception => e.printStackTrace()
+      case e: Exception => if(verbose) e.printStackTrace()
     }
 	}
 
@@ -124,7 +127,8 @@ object crawl {
 		if (src.isEmpty) None else Some(src.reduceLeft(_ + "\n" + _))
 	} catch {
 		case e: Exception => {
-			e.printStackTrace()
+      if(verbose)
+        e.printStackTrace()
 			None
 		}
 	}
@@ -136,7 +140,7 @@ object crawl {
  * pipes the result in, makes a WaveletSignature [[holmes-wavelet.WaveletSignature]]
  * and saves the signature to the disc.
  */
-class IMExecActor(cmd: ConvertCmd, op: IMOperation, targetDir:String) extends Actor {
+class IMExecActor(cmd: ConvertCmd, op: IMOperation, targetDir:String, verbose:Boolean) extends Actor {
   def act = {
     react {
       case f: File => try {
@@ -156,8 +160,8 @@ class IMExecActor(cmd: ConvertCmd, op: IMOperation, targetDir:String) extends Ac
         }
       } catch {
         case e: CommandException => 
-          pUtil.printError(if(!e.getErrorText.asScala.toList.isEmpty) e.getErrorText.asScala.toList.reduceLeft(_ + " " + _) else "")
-        case e: Exception => e.printStackTrace()
+          if(verbose) pUtil.printError(if(!e.getErrorText.asScala.toList.isEmpty) e.getErrorText.asScala.toList.reduceLeft(_ + " " + _) else "")
+        case e: Exception => if(verbose) e.printStackTrace()
       }
     }
   }
@@ -177,8 +181,8 @@ object crawlerFileFilter extends FileFilter {
                                       ".efr", ".gif", ".gif87", ".icb", ".ico", ".icon", ".jng",
                                       ".jpeg", ".jpg", ".nef", ".nrw", ".orf", ".pcx", ".pdf",
                                       ".pix", ".png", ".png24", ".png32", ".psd", ".psb", ".sgi",
-                                      ".sr2", ".srf", ".svg", ".svgz", ".tga", ".tiff", ".tiff64", ".tif",
-                                      ".xcf")
+                                      ".sr2", ".srf", ".svg", ".svgz", ".tga", ".tiff", ".tiff64", 
+                                      ".tif", ".xcf")
 
   // FIXME Implementation is *imparative
   override def accept(f:File):Boolean = {
